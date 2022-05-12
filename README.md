@@ -19,6 +19,9 @@
 
 자연스레 승부예측에 대해서도 관심을 가질것으로 예상해 피파온라인4의 데이터들을 가지고 승리를 예측해볼수있는 모델을 구상하기 되었다.
 
+![image](https://user-images.githubusercontent.com/98334298/168064328-35da83d8-184a-4856-acbf-2f23f9170b2f.png)
+![image](https://user-images.githubusercontent.com/98334298/168064625-8e0bde2e-90e0-4e2b-93ba-db445374b3a3.png)
+
 ---
 ## 선행자료 조사
 
