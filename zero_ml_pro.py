@@ -74,7 +74,7 @@ raw_df.to_csv('zero_ml_raw.csv', encoding='cp949')
 api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTQwOTM3NzUwOSIsImF1dGhfaWQiOiIyIiwidG9rZW5fdHlwZSI6IkFjY2Vzc1Rva2VuIiwic2VydmljZV9pZCI6IjQzMDAxMTQ4MSIsIlgtQXBwLVJhdGUtTGltaXQiOiI1MDA6MTAiLCJuYmYiOjE2NTEwNDg0NTEsImV4cCI6MTY2NjYwMDQ1MSwiaWF0IjoxNjUxMDQ4NDUxfQ.H2Rcu3IHdrajcam3_WE8leINtSGRx-oyRBh1WPA7e0g"
 headers = {'Authorization': api_key}
 
-def get_player(name):
+def get_player(name, offset, limit):
     uniqID = []
     url = "https://api.nexon.co.kr/fifaonline4/v1.0/users?nickname="
     nickName = name
@@ -88,8 +88,8 @@ def get_player(name):
     for iD in uniqID:
         accessid = iD
         match = 50
-        offset = 500
-        limit = 100
+        offset = offset
+        limit = limit
         full = f"https://api.nexon.co.kr/fifaonline4/v1.0/users/{accessid}/matches?matchtype={match}&offset={offset}&limit={limit}"
         
         resGet = requests.get(full, headers = headers)
@@ -118,8 +118,11 @@ def get_player(name):
                 else:
                     print(matchID.index(md))
 
-get_player('SaddlerJungmin')
-raw_fin_pro_df = pd.DataFrame(matchData)
+get_player('SaddlerJungmin', 500, 100)
+raw_fin_pro_tmp1 = matchData
+get_player('SaddlerJungmin', 600, 100)
+raw_fin_pro_tmp2 = matchData
+raw_fin_pro_df = pd.DataFrame(raw_fin_pro_tmp1 + raw_fin_pro_tmp2)
 raw_fin_pro_df.to_csv('zero_ml_pro_raw.csv', encoding='cp949')
 
 get_player('캉테아부지')
@@ -422,9 +425,9 @@ plt.figure()
 sns.boxplot(data=X_train_sc, orient='h')
 plt.show()
 
-# for i in X_train_fi.columns:
-#     f, ax = plt.subplots(figsize = (10, 6))
-#     sns.distplot(X_train_fi[i])
+for i in X_train_fi.columns:
+    f, ax = plt.subplots(figsize = (10, 6))
+    sns.distplot(X_train_fi[i])
 
 rf = RandomForestRegressor(max_depth= 50, random_state=13, n_jobs=-1).fit(X_train_sc, y_train)
 rf_fi_pred_train = rf.predict(X_train_sc)
@@ -492,7 +495,7 @@ sns.boxplot(data=X_train_mm, orient='h')
 plt.show()
 
 rf = RandomForestRegressor(n_estimators= 500, max_depth= 50, max_features=1, 
-                           random_state=13, n_jobs=-1).fit(X_train_mm, y_train)
+                            random_state=13, n_jobs=-1).fit(X_train_mm, y_train)
 rf_fi_pred_train = rf.predict(X_train_mm)
 rf_fi_pred_val = rf.predict(X_val_mm)
 print_eval(y_train, rf_fi_pred_train) # 0.9270138798383085
@@ -523,7 +526,7 @@ for i in range(1 , len(X_train_mm.columns)+1):
     print_eval(y_train, rf_ex_pred_train)
     print_eval(y_val, rf_ex_pred_val)
 
-''' 결론: 순서대로 넣으면 초반에 train의 r^2도 0.4이렇게 나오다가 특성이 들어올수록 r^2 상승 그렇다고
+''' 결론: 순서대로 넣으면 초반에 train의 r^2도 0.4이렇게 나오다가 특성이 들어올수록 r^2 상승, 그렇다고
     val의 r^2는 올라가지 않음 그냥 이대로 진행 또한, 이 정도면 하이퍼파라미터 크게 신경 쓸 필요 없을 듯'''
     
 #%%
@@ -679,6 +682,8 @@ print_eval(y_train, lgbm_rs_fin_best_pred_train) # 0.5660083590987288 / 0.900509
 print_eval(y_val, lgbm_rs_fin_best_pred_val) # 0.4934274150599618 / 0.9749675951794595
 
 ''' 과적합이 되더라도 차라리 train MSE가 가장 낮은 RandomForestRegressor 선택 '''
+rf_rs_fin_best_pred_test = rf_rs_fin_best.predict(X_test_mm)
+print_eval(y_test, rf_rs_fin_best_pred_test) # 0.5018588883775862 / 0.9482042238571879
 
 #%% final pro
 raw_fin_pro_df = pd.read_csv('zero_ml_pro_raw.csv', encoding='cp949', index_col=0)
@@ -691,7 +696,7 @@ raw_fin_pro_df.drop(index=raw_fin_pro_df[raw_fin_pro_df['matchResult'] == '무']
 raw_fin_pro_df.duplicated().sum()
 raw_fin_pro_df = raw_fin_pro_df.drop_duplicates()
 raw_fin_pro_df.reset_index(drop=True, inplace=True)
-
+raw_fin_pro_df.columns
 drop_col = ['matchId', 'nickname', 'seasonId', 'matchEndType', 'controller',
             'systemPause', 'goalTotalDisplay', 'matchResult', 'goalInPenalty',
             'goalOutPenalty', 'goalPenaltyKick', 'averageRating', 'dribble', 
@@ -714,7 +719,7 @@ for i in range(int(len(raw_fin_pro_df)/2)):
         X_pro_fi_mm = pd.DataFrame(X_pro_fi_mm)
         X_pro_fi_mm.columns = X_pro_fi.columns
         
-        rf_rs_best_pred_fin = rf_rs_best.predict(X_pro_fi_mm)
+        rf_rs_best_pred_fin = rf_rs_fin_best.predict(X_pro_fi_mm)
         pred_goal_list.append(rf_rs_best_pred_fin[0])
     
     if pred_goal_list[-1] < pred_goal_list[-2]:
@@ -740,6 +745,7 @@ pro_pred_win_rate = len(pro_result_df[pro_result_df['pred_matchResult'] == 1]) /
 print_clf_eval(pro_real_win, pro_pred_win_list)
 print('진짜 승률', pro_real_win_rate)
 print('예측 승률', pro_real_win_rate)
+
 #%% final ama
 raw_fin_ama_df = pd.read_csv('zero_ml_ama_raw.csv', encoding='cp949', index_col=0)
 
@@ -774,7 +780,7 @@ for i in range(int(len(raw_fin_ama_df)/2)):
         X_pro_fi_mm = pd.DataFrame(X_pro_fi_mm)
         X_pro_fi_mm.columns = X_pro_fi.columns
         
-        rf_rs_best_pred_fin = rf_rs_best.predict(X_pro_fi_mm)
+        rf_rs_best_pred_fin = rf_rs_fin_best.predict(X_pro_fi_mm)
         pred_goal_list.append(rf_rs_best_pred_fin[0])
     
     if pred_goal_list[-1] < pred_goal_list[-2]:
@@ -801,6 +807,9 @@ print_clf_eval(ama_real_win, ama_pred_win_list)
 print('진짜 승률', ama_real_win_rate)
 print('예측 승률', ama_pred_win_rate)
 
-#%% 결론 / 이 부분 수정 혹은 보완 필요
+#%% 결론 
 ''' 득점한 골수는 정확히 예측하진 못하나 승률을 정확히 예측한다는 것을 알수 있다 
-이로써, 프로선수와 전 랭킹1위가 대결 할때는 박빙이라는 것을 알 수 있다.'''
+또한, 승률이 50%인 것이 적은 프로선수나 아마추어의test 데이터 수라고 판단되어 더 많은 데이터를 수집하여 예측해봤지만 
+계속 승률이 50%였다. 이에 내린 결론은 50%인 이유는 아무래도 프로선수나 랭커나 동일한 플레이어 이기 떄문에 
+넥슨에서의 MMR에 의해서 실력이 비슷한 사람끼리 경기를 진행하기 떄문에 승률이 50%인것으로 사료된다.
+이로써 프로선수와 전시즌 랭킹1위가 대결 할때의 경기력은 구축한 모델로 알 수 없다. '''
